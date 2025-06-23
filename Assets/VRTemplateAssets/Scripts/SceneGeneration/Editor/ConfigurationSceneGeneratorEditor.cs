@@ -31,11 +31,18 @@ namespace VRTemplate.SceneGeneration.Editor
                 NewSceneMode.Single
             );
 
+            // Eliminar la luz direccional por defecto para un control total
+            var defaultLight = Object.FindObjectOfType<Light>();
+            if (defaultLight != null && defaultLight.type == LightType.Directional)
+            {
+                Object.DestroyImmediate(defaultLight.gameObject);
+            }
+
             // Configurar cámara principal
             SetupMainCamera();
 
-            // Configurar iluminación básica
-            SetupLighting();
+            // Iluminación direccional
+            CreateDirectionalLighting();
 
             // Crear EventSystem para interacciones
             CreateEventSystem();
@@ -162,31 +169,68 @@ namespace VRTemplate.SceneGeneration.Editor
             labelRect.anchoredPosition = new Vector2(0, 150);
             labelRect.sizeDelta = new Vector2(400, 30);
 
-            // Crear dropdown
-            GameObject dropdownGO = new GameObject("ScenarioDropdown");
-            dropdownGO.transform.SetParent(parent, false);
+            // Cargar y instanciar el prefab de dropdown de VRTemplateAssets
+            GameObject dropdownPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/VRTemplateAssets/Prefabs/UI/Dropdown.prefab"
+            );
+            if (dropdownPrefab != null)
+            {
+                GameObject dropdownGO =
+                    PrefabUtility.InstantiatePrefab(dropdownPrefab) as GameObject;
+                dropdownGO.name = "ScenarioDropdown";
+                dropdownGO.transform.SetParent(parent, false);
 
-            TMPro.TMP_Dropdown dropdown = dropdownGO.AddComponent<TMPro.TMP_Dropdown>();
+                // Configurar RectTransform
+                RectTransform dropdownRect = dropdownGO.GetComponent<RectTransform>();
+                dropdownRect.anchorMin = new Vector2(0.5f, 0.5f);
+                dropdownRect.anchorMax = new Vector2(0.5f, 0.5f);
+                dropdownRect.anchoredPosition = new Vector2(0, 100);
+                dropdownRect.sizeDelta = new Vector2(400, 50);
 
-            // Configurar opciones
-            dropdown.options.Clear();
-            dropdown.options.Add(new TMPro.TMP_Dropdown.OptionData("Sala de Clases"));
-            dropdown.options.Add(new TMPro.TMP_Dropdown.OptionData("Auditorio"));
-            dropdown.options.Add(new TMPro.TMP_Dropdown.OptionData("Sala de Conferencias"));
-            dropdown.value = 0;
+                // Configurar opciones del dropdown
+                TMPro.TMP_Dropdown dropdown = dropdownGO.GetComponent<TMPro.TMP_Dropdown>();
+                if (dropdown != null)
+                {
+                    dropdown.options.Clear();
+                    dropdown.options.Add(new TMPro.TMP_Dropdown.OptionData("Sala de Clases"));
+                    dropdown.options.Add(new TMPro.TMP_Dropdown.OptionData("Auditorio"));
+                    dropdown.options.Add(new TMPro.TMP_Dropdown.OptionData("Sala de Conferencias"));
+                    dropdown.value = 0;
+                }
 
-            // Configurar RectTransform
-            RectTransform dropdownRect = dropdownGO.GetComponent<RectTransform>();
-            dropdownRect.anchorMin = new Vector2(0.5f, 0.5f);
-            dropdownRect.anchorMax = new Vector2(0.5f, 0.5f);
-            dropdownRect.anchoredPosition = new Vector2(0, 100);
-            dropdownRect.sizeDelta = new Vector2(400, 50);
+                Debug.Log("✅ Dropdown prefab instanciado correctamente");
+            }
+            else
+            {
+                Debug.LogError(
+                    "❌ No se pudo cargar el prefab de dropdown desde VRTemplateAssets/Prefabs/UI/Dropdown.prefab"
+                );
 
-            // Configurar imagen del dropdown
-            UnityEngine.UI.Image dropdownImage = dropdownGO.AddComponent<UnityEngine.UI.Image>();
-            dropdownImage.color = new Color(0.2f, 0.2f, 0.2f, 1f);
-            // Configurar template del dropdown
-            dropdown.template = CreateDropdownTemplate(dropdownGO);
+                // Fallback: crear un dropdown básico
+                GameObject dropdownGO = new GameObject("ScenarioDropdown");
+                dropdownGO.transform.SetParent(parent, false);
+
+                TMPro.TMP_Dropdown dropdown = dropdownGO.AddComponent<TMPro.TMP_Dropdown>();
+
+                // Configurar opciones
+                dropdown.options.Clear();
+                dropdown.options.Add(new TMPro.TMP_Dropdown.OptionData("Sala de Clases"));
+                dropdown.options.Add(new TMPro.TMP_Dropdown.OptionData("Auditorio"));
+                dropdown.options.Add(new TMPro.TMP_Dropdown.OptionData("Sala de Conferencias"));
+                dropdown.value = 0;
+
+                // Configurar RectTransform
+                RectTransform dropdownRect = dropdownGO.GetComponent<RectTransform>();
+                dropdownRect.anchorMin = new Vector2(0.5f, 0.5f);
+                dropdownRect.anchorMax = new Vector2(0.5f, 0.5f);
+                dropdownRect.anchoredPosition = new Vector2(0, 100);
+                dropdownRect.sizeDelta = new Vector2(400, 50);
+
+                // Configurar imagen del dropdown
+                UnityEngine.UI.Image dropdownImage =
+                    dropdownGO.AddComponent<UnityEngine.UI.Image>();
+                dropdownImage.color = new Color(0.2f, 0.2f, 0.2f, 1f);
+            }
         }
 
         private static void CreateLoadPDFButton(Transform parent)
@@ -287,37 +331,25 @@ namespace VRTemplate.SceneGeneration.Editor
             Camera mainCamera = Camera.main;
             if (mainCamera != null)
             {
-                // Configurar cámara para UI
-                mainCamera.clearFlags = CameraClearFlags.SolidColor;
-                mainCamera.backgroundColor = new Color(0.1f, 0.1f, 0.1f, 1f);
-                mainCamera.transform.position = new Vector3(0, 0, -10);
+                mainCamera.clearFlags = CameraClearFlags.Skybox;
+                mainCamera.backgroundColor = new Color(0.1f, 0.1f, 0.15f);
                 mainCamera.orthographic = true;
                 mainCamera.orthographicSize = 5f;
+
+                RectTransform cameraRect = mainCamera.GetComponent<RectTransform>();
+                if (cameraRect != null)
+                    cameraRect.sizeDelta = new Vector2(1, 1);
             }
         }
 
-        private static void SetupLighting()
+        private static void CreateDirectionalLighting()
         {
-            // Buscar luz direccional existente
-            Light directionalLight = FindObjectOfType<Light>();
-            if (directionalLight == null)
-            {
-                // Crear nueva luz direccional
-                GameObject lightGO = new GameObject("Directional Light");
-                directionalLight = lightGO.AddComponent<Light>();
-            }
-
-            // Configurar luz
-            directionalLight.type = LightType.Directional;
-            directionalLight.intensity = 1f;
-            directionalLight.color = Color.white;
-            directionalLight.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
-
-            // Configurar configuración de iluminación
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.5f, 0.5f, 0.5f);
-            RenderSettings.ambientEquatorColor = new Color(0.4f, 0.4f, 0.4f);
-            RenderSettings.ambientGroundColor = new Color(0.3f, 0.3f, 0.3f);
+            GameObject mainLight = new GameObject("DirectionalLight_Main");
+            Light light1 = mainLight.AddComponent<Light>();
+            light1.type = LightType.Directional;
+            light1.intensity = 1.0f;
+            light1.color = Color.white;
+            mainLight.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
         }
 
         private static void SaveScene(string scenePath)
@@ -348,114 +380,6 @@ namespace VRTemplate.SceneGeneration.Editor
                 EditorBuildSettings.scenes = buildScenes.ToArray();
                 Debug.Log("✅ Escena agregada al Build Settings");
             }
-        }
-
-        private static RectTransform CreateDropdownTemplate(GameObject parent)
-        {
-            // Crear template del dropdown
-            GameObject templateGO = new GameObject("Template");
-            templateGO.transform.SetParent(parent.transform, false);
-            templateGO.SetActive(false);
-
-            // Agregar imagen de fondo
-            UnityEngine.UI.Image templateImage = templateGO.AddComponent<UnityEngine.UI.Image>();
-            templateImage.color = new Color(0.2f, 0.2f, 0.2f, 1f);
-
-            // Configurar RectTransform
-            RectTransform templateRect = templateGO.GetComponent<RectTransform>();
-            templateRect.anchorMin = new Vector2(0, 1);
-            templateRect.anchorMax = new Vector2(1, 0);
-            templateRect.offsetMin = Vector2.zero;
-            templateRect.offsetMax = new Vector2(0, -200);
-
-            // Crear ScrollView
-            GameObject scrollViewGO = new GameObject("ScrollView");
-            scrollViewGO.transform.SetParent(templateGO.transform, false);
-
-            UnityEngine.UI.ScrollRect scrollRect =
-                scrollViewGO.AddComponent<UnityEngine.UI.ScrollRect>();
-            UnityEngine.UI.Image scrollImage = scrollViewGO.AddComponent<UnityEngine.UI.Image>();
-            scrollImage.color = new Color(0.1f, 0.1f, 0.1f, 1f);
-
-            RectTransform scrollRectTransform = scrollViewGO.GetComponent<RectTransform>();
-            scrollRectTransform.anchorMin = Vector2.zero;
-            scrollRectTransform.anchorMax = Vector2.one;
-            scrollRectTransform.offsetMin = Vector2.zero;
-            scrollRectTransform.offsetMax = Vector2.zero;
-
-            // Crear Viewport
-            GameObject viewportGO = new GameObject("Viewport");
-            viewportGO.transform.SetParent(scrollViewGO.transform, false);
-
-            UnityEngine.UI.Mask viewportMask = viewportGO.AddComponent<UnityEngine.UI.Mask>();
-            UnityEngine.UI.Image viewportImage = viewportGO.AddComponent<UnityEngine.UI.Image>();
-            viewportImage.color = new Color(0.1f, 0.1f, 0.1f, 1f);
-
-            RectTransform viewportRect = viewportGO.GetComponent<RectTransform>();
-            viewportRect.anchorMin = Vector2.zero;
-            viewportRect.anchorMax = Vector2.one;
-            viewportRect.offsetMin = Vector2.zero;
-            viewportRect.offsetMax = Vector2.zero;
-
-            // Crear Content
-            GameObject contentGO = new GameObject("Content");
-            contentGO.transform.SetParent(viewportGO.transform, false);
-
-            UnityEngine.UI.VerticalLayoutGroup contentLayout =
-                contentGO.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
-            contentLayout.childControlHeight = true;
-            contentLayout.childControlWidth = true;
-            contentLayout.childForceExpandHeight = false;
-            contentLayout.childForceExpandWidth = true;
-
-            RectTransform contentRect = contentGO.GetComponent<RectTransform>();
-            contentRect.anchorMin = new Vector2(0, 1);
-            contentRect.anchorMax = new Vector2(1, 1);
-            contentRect.pivot = new Vector2(0.5f, 1);
-            contentRect.offsetMin = Vector2.zero;
-            contentRect.offsetMax = Vector2.zero;
-
-            // Configurar ScrollRect
-            scrollRect.viewport = viewportRect;
-            scrollRect.content = contentRect;
-            scrollRect.horizontal = false;
-            scrollRect.vertical = true;
-
-            // Crear Item Template
-            GameObject itemTemplateGO = new GameObject("Item");
-            itemTemplateGO.transform.SetParent(contentGO.transform, false);
-
-            UnityEngine.UI.Toggle itemToggle = itemTemplateGO.AddComponent<UnityEngine.UI.Toggle>();
-            UnityEngine.UI.Image itemImage = itemTemplateGO.AddComponent<UnityEngine.UI.Image>();
-            itemImage.color = new Color(0.3f, 0.3f, 0.3f, 1f);
-
-            RectTransform itemRect = itemTemplateGO.GetComponent<RectTransform>();
-            itemRect.anchorMin = Vector2.zero;
-            itemRect.anchorMax = Vector2.one;
-            itemRect.offsetMin = Vector2.zero;
-            itemRect.offsetMax = Vector2.zero;
-
-            // Crear Label del item
-            GameObject itemLabelGO = new GameObject("Item Label");
-            itemLabelGO.transform.SetParent(itemTemplateGO.transform, false);
-
-            TMPro.TextMeshProUGUI itemLabel = itemLabelGO.AddComponent<TMPro.TextMeshProUGUI>();
-            itemLabel.text = "Option";
-            itemLabel.fontSize = 14;
-            itemLabel.color = Color.white;
-            itemLabel.alignment = TMPro.TextAlignmentOptions.Left;
-
-            RectTransform itemLabelRect = itemLabelGO.GetComponent<RectTransform>();
-            itemLabelRect.anchorMin = Vector2.zero;
-            itemLabelRect.anchorMax = Vector2.one;
-            itemLabelRect.offsetMin = new Vector2(10, 0);
-            itemLabelRect.offsetMax = new Vector2(-10, 0);
-
-            // Configurar Toggle
-            itemToggle.targetGraphic = itemImage;
-            itemToggle.graphic = itemLabel;
-
-            return templateRect;
         }
     }
 
@@ -532,16 +456,57 @@ namespace VRTemplate.SceneGeneration.Editor
         {
             if (string.IsNullOrEmpty(selectedPDFPath))
             {
-                Debug.LogWarning("No se ha seleccionado ningún PDF");
+                Debug.LogWarning("⚠️ No se ha seleccionado ningún PDF");
                 return;
             }
 
+            // Guardar configuración
             PlayerPrefs.SetInt("SelectedScenario", scenarioDropdown.value);
             PlayerPrefs.SetString("SelectedPDFPath", selectedPDFPath);
 
+            // Definir nombres de escenas
             string[] sceneNames = { "ClassroomScene", "AuditoriumScene", "ConferenceScene" };
             string sceneName = sceneNames[scenarioDropdown.value];
-            SceneManager.LoadScene(sceneName);
+
+            Debug.Log($"🚀 Iniciando presentación en: {sceneName}");
+            Debug.Log($"📄 PDF: {System.IO.Path.GetFileName(selectedPDFPath)}");
+
+            // Intentar cargar la escena usando SceneManager
+            try
+            {
+                // Verificar si la escena existe en Build Settings
+                bool sceneExists = false;
+                for (
+                    int i = 0;
+                    i < UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings;
+                    i++
+                )
+                {
+                    string scenePath =
+                        UnityEngine.SceneManagement.SceneUtility.GetScenePathByBuildIndex(i);
+                    if (scenePath.Contains(sceneName))
+                    {
+                        sceneExists = true;
+                        break;
+                    }
+                }
+
+                if (sceneExists)
+                {
+                    // Usar SceneManager.LoadScene
+                    UnityEngine.SceneManagement.SceneManager.LoadScene(sceneName);
+                    Debug.Log($"✅ Escena {sceneName} cargada exitosamente");
+                }
+                else
+                {
+                    Debug.LogError($"❌ La escena {sceneName} no está en el Build Settings");
+                    Debug.LogError("💡 Ejecuta: VR Simulador → Generar y Configurar Todo");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"❌ Error al cargar la escena {sceneName}: {e.Message}");
+            }
         }
 
         private void OnScenarioChanged(int value)

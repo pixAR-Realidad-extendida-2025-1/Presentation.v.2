@@ -1,5 +1,9 @@
+using System.Collections.Generic;
+using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
 
@@ -34,6 +38,15 @@ namespace VRTemplate.Setup
         private GameObject currentPlayer;
         private bool isVRMode = false;
 
+        private Camera playerCamera;
+        private CharacterController characterController;
+
+        // Input System
+        private UnityEngine.InputSystem.PlayerInput playerInput;
+        private UnityEngine.InputSystem.InputAction moveAction;
+        private UnityEngine.InputSystem.InputAction lookAction;
+        private UnityEngine.InputSystem.InputAction jumpAction;
+
         private void Start()
         {
             SetupInputSystem();
@@ -47,9 +60,7 @@ namespace VRTemplate.Setup
             Debug.Log("🔧 Configurando sistema de input...");
 
             // Verificar si estamos en la escena de configuración
-            string currentSceneName = UnityEngine
-                .SceneManagement.SceneManager.GetActiveScene()
-                .name;
+            string currentSceneName = SceneManager.GetActiveScene().name;
             if (currentSceneName == "ConfigurationScene")
             {
                 Debug.Log("ℹ️ Escena de configuración detectada - no se creará player");
@@ -109,30 +120,94 @@ namespace VRTemplate.Setup
         }
 
         /// <summary>
-        /// Configura el input para teclado y mouse
+        /// Configura el input para teclado y mouse usando el prefab VR
         /// </summary>
         private void SetupKeyboardMouseInput()
         {
             Debug.Log("⌨️ Configurando input teclado/mouse...");
 
-            // Crear un player básico para teclado/mouse
-            currentPlayer = CreateKeyboardMousePlayer();
-
-            // Configurar spawn point si existe
+            // Buscar spawn point
             Transform spawnPoint = FindSpawnPoint();
-            if (spawnPoint != null)
-            {
-                currentPlayer.transform.position = spawnPoint.position;
-                currentPlayer.transform.rotation = spawnPoint.rotation;
-            }
 
-            Debug.Log("✅ Input teclado/mouse configurado correctamente");
+            // Cargar y usar el prefab VR completo
+            GameObject vrPlayerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/VRTemplateAssets/Prefabs/Setup/Complete XR Origin Set Up Variant.prefab"
+            );
+
+            if (vrPlayerPrefab != null)
+            {
+                // Instanciar el prefab VR
+                currentPlayer = PrefabUtility.InstantiatePrefab(vrPlayerPrefab) as GameObject;
+
+                if (currentPlayer != null)
+                {
+                    // Posicionar en el spawn point
+                    if (spawnPoint != null)
+                    {
+                        currentPlayer.transform.position = spawnPoint.position;
+                        currentPlayer.transform.rotation = spawnPoint.rotation;
+                    }
+                    else
+                    {
+                        // Posición por defecto
+                        currentPlayer.transform.position = new Vector3(0, 1.7f, 0);
+                    }
+
+                    // Configurar para modo desktop
+                    ConfigureForDesktopMode(currentPlayer);
+
+                    Debug.Log("✅ Player VR configurado para modo desktop");
+                }
+                else
+                {
+                    Debug.LogError("❌ No se pudo instanciar el prefab VR");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ No se encontró el prefab VR, creando player básico");
+                CreateBasicKeyboardMousePlayer(spawnPoint);
+            }
         }
 
         /// <summary>
-        /// Crea un player básico para teclado y mouse
+        /// Configura el player VR para modo desktop
         /// </summary>
-        private GameObject CreateKeyboardMousePlayer()
+        private void ConfigureForDesktopMode(GameObject player)
+        {
+            // Buscar la cámara principal
+            var camera = player.GetComponentInChildren<Camera>();
+            if (camera != null)
+            {
+                camera.tag = "MainCamera";
+
+                // Ajustar posición de la cámara para desktop
+                var cameraTransform = camera.transform;
+                if (cameraTransform.parent != null)
+                {
+                    // Ajustar altura para desktop
+                    Vector3 localPos = cameraTransform.parent.localPosition;
+                    localPos.y = 1.7f;
+                    cameraTransform.parent.localPosition = localPos;
+                }
+            }
+
+            // Agregar controlador de teclado/mouse si no existe
+            var keyboardController = player.GetComponentInChildren<KeyboardMouseController>();
+            if (keyboardController == null && camera != null)
+            {
+                keyboardController = camera.gameObject.AddComponent<KeyboardMouseController>();
+                keyboardController.moveSpeed = keyboardMoveSpeed;
+                keyboardController.lookSensitivity = mouseLookSensitivity;
+            }
+
+            Debug.Log("✅ Player VR configurado para modo desktop");
+        }
+
+        /// <summary>
+        /// Crea un player básico como fallback
+        /// </summary>
+        private void CreateBasicKeyboardMousePlayer(Transform spawnPoint)
         {
             GameObject player = new GameObject("KeyboardMousePlayer");
 
@@ -144,24 +219,31 @@ namespace VRTemplate.Setup
             playerCamera.nearClipPlane = 0.1f;
             playerCamera.farClipPlane = 1000f;
 
+            // Agregar CharacterController para mejor control de colisiones
+            CharacterController characterController = player.AddComponent<CharacterController>();
+            characterController.height = 2f;
+            characterController.radius = 0.5f;
+            characterController.center = new Vector3(0, 1f, 0);
+            characterController.slopeLimit = 45f;
+            characterController.stepOffset = 0.3f;
+
             // Agregar componentes de movimiento
             KeyboardMouseController controller = player.AddComponent<KeyboardMouseController>();
             controller.moveSpeed = keyboardMoveSpeed;
             controller.lookSensitivity = mouseLookSensitivity;
 
-            // Agregar collider para física
-            CapsuleCollider collider = player.AddComponent<CapsuleCollider>();
-            collider.height = 2f;
-            collider.radius = 0.5f;
-            collider.center = new Vector3(0, 1f, 0);
+            // Posicionar en spawn point
+            if (spawnPoint != null)
+            {
+                player.transform.position = spawnPoint.position;
+                player.transform.rotation = spawnPoint.rotation;
+            }
+            else
+            {
+                player.transform.position = new Vector3(0, 1.7f, 0);
+            }
 
-            // Agregar rigidbody
-            Rigidbody rb = player.AddComponent<Rigidbody>();
-            rb.useGravity = true;
-            rb.constraints =
-                RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-
-            return player;
+            currentPlayer = player;
         }
 
         /// <summary>
@@ -243,18 +325,50 @@ namespace VRTemplate.Setup
         public float jumpForce = 5f;
 
         private Camera playerCamera;
-        private Rigidbody rb;
-        private float verticalRotation = 0f;
-        private bool isGrounded = true;
+        private CharacterController characterController;
+
+        // Input System
+        private UnityEngine.InputSystem.PlayerInput playerInput;
+        private UnityEngine.InputSystem.InputAction moveAction;
+        private UnityEngine.InputSystem.InputAction lookAction;
+        private UnityEngine.InputSystem.InputAction jumpAction;
 
         private void Start()
         {
             playerCamera = GetComponent<Camera>();
-            rb = GetComponent<Rigidbody>();
+            characterController = GetComponent<CharacterController>();
+
+            // Configurar Input System
+            SetupInputActions();
 
             // Bloquear y ocultar el cursor
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
+        }
+
+        private void SetupInputActions()
+        {
+            // Crear acciones de input manualmente
+            moveAction = new UnityEngine.InputSystem.InputAction(
+                "Move",
+                UnityEngine.InputSystem.InputActionType.Value,
+                "<Keyboard>/wasd"
+            );
+            lookAction = new UnityEngine.InputSystem.InputAction(
+                "Look",
+                UnityEngine.InputSystem.InputActionType.Value,
+                "<Mouse>/delta"
+            );
+            jumpAction = new UnityEngine.InputSystem.InputAction(
+                "Jump",
+                UnityEngine.InputSystem.InputActionType.Button,
+                "<Keyboard>/space"
+            );
+
+            // Habilitar las acciones
+            moveAction.Enable();
+            lookAction.Enable();
+            jumpAction.Enable();
         }
 
         private void Update()
@@ -265,60 +379,91 @@ namespace VRTemplate.Setup
 
         private void HandleMouseLook()
         {
-            // Rotación horizontal (izquierda/derecha)
-            float mouseX = Input.GetAxis("Mouse X") * lookSensitivity;
+            // Rotación horizontal (izquierda/derecha) - rotar todo el player
+            Vector2 lookDelta = lookAction.ReadValue<Vector2>();
+            float mouseX = lookDelta.x * lookSensitivity;
             transform.Rotate(Vector3.up * mouseX);
 
-            // Rotación vertical (arriba/abajo)
-            float mouseY = Input.GetAxis("Mouse Y") * lookSensitivity;
-            verticalRotation -= mouseY;
-            verticalRotation = Mathf.Clamp(verticalRotation, -90f, 90f);
-            playerCamera.transform.localRotation = Quaternion.Euler(verticalRotation, 0f, 0f);
+            // Rotación vertical (arriba/abajo) - solo la cámara
+            float mouseY = lookDelta.y * lookSensitivity;
+            if (playerCamera != null)
+            {
+                Vector3 currentRotation = playerCamera.transform.localEulerAngles;
+                float newXRotation = currentRotation.x - mouseY;
+
+                // Limitar rotación vertical entre -90 y 90 grados
+                if (newXRotation > 180f)
+                    newXRotation -= 360f;
+                newXRotation = Mathf.Clamp(newXRotation, -90f, 90f);
+
+                playerCamera.transform.localRotation = Quaternion.Euler(newXRotation, 0f, 0f);
+            }
         }
 
         private void HandleKeyboardInput()
         {
-            // Movimiento
-            float moveX = Input.GetAxis("Horizontal");
-            float moveZ = Input.GetAxis("Vertical");
+            // Movimiento usando Input System
+            Vector2 moveInput = moveAction.ReadValue<Vector2>();
+            float moveX = moveInput.x;
+            float moveZ = moveInput.y;
 
+            // Calcular dirección de movimiento relativa a la rotación del player
             Vector3 moveDirection = transform.right * moveX + transform.forward * moveZ;
             moveDirection.Normalize();
 
-            // Aplicar movimiento
-            Vector3 velocity = moveDirection * moveSpeed;
-            velocity.y = rb.velocity.y; // Mantener velocidad vertical para gravedad
-            rb.velocity = velocity;
+            // Aplicar movimiento horizontal
+            Vector3 horizontalVelocity =
+                new Vector3(moveDirection.x, 0, moveDirection.z) * moveSpeed;
+
+            // Aplicar gravedad vertical
+            Vector3 verticalVelocity = Vector3.zero;
+            if (!characterController.isGrounded)
+            {
+                verticalVelocity.y = Physics.gravity.y * Time.deltaTime;
+            }
+
+            // Combinar velocidades y aplicar movimiento
+            Vector3 totalVelocity = horizontalVelocity + verticalVelocity;
+            characterController.Move(totalVelocity * Time.deltaTime);
 
             // Salto
-            if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+            if (jumpAction.WasPressedThisFrame() && characterController.isGrounded)
             {
-                rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+                Vector3 jumpVelocity =
+                    Vector3.up * Mathf.Sqrt(2 * jumpForce * Mathf.Abs(Physics.gravity.y));
+                characterController.Move(jumpVelocity * Time.deltaTime);
             }
 
             // Desbloquear cursor con Escape
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (
+                UnityEngine.InputSystem.Keyboard.current != null
+                && UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame
+            )
             {
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
             }
 
             // Volver a bloquear cursor con clic izquierdo
-            if (Input.GetMouseButtonDown(0))
+            if (
+                UnityEngine.InputSystem.Mouse.current != null
+                && UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame
+            )
             {
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
             }
         }
 
-        private void OnCollisionStay(Collision collision)
+        private void OnDestroy()
         {
-            isGrounded = true;
-        }
-
-        private void OnCollisionExit(Collision collision)
-        {
-            isGrounded = false;
+            // Limpiar acciones de input
+            if (moveAction != null)
+                moveAction.Disable();
+            if (lookAction != null)
+                lookAction.Disable();
+            if (jumpAction != null)
+                jumpAction.Disable();
         }
     }
 }

@@ -39,6 +39,13 @@ namespace VRTemplate.SceneGeneration.Editor
                 NewSceneMode.Single
             );
 
+            // Eliminar la luz direccional por defecto
+            var defaultLight = Object.FindObjectOfType<Light>();
+            if (defaultLight != null && defaultLight.type == LightType.Directional)
+            {
+                Object.DestroyImmediate(defaultLight.gameObject);
+            }
+
             // Parámetros de la sala (dimensiones ejecutivas)
             float roomWidth = 6f; // Ancho: 6 metros
             float roomLength = 10f; // Largo: 10 metros
@@ -96,6 +103,9 @@ namespace VRTemplate.SceneGeneration.Editor
                 new Vector3(wallThickness, roomHeight, roomLength),
                 new Color(0.95f, 0.95f, 0.95f)
             );
+
+            // Iluminación direccional múltiple
+            CreateDirectionalLighting();
 
             // Crear suelo (alfombra ejecutiva)
             CreatePrimitive(
@@ -302,6 +312,9 @@ namespace VRTemplate.SceneGeneration.Editor
             GameObject spawnPoint = new GameObject("SpawnPoint");
             spawnPoint.transform.position = new Vector3(spawnX, spawnY, spawnZ);
 
+            // Crear iluminación profesional
+            CreateConferenceLighting(roomWidth, roomLength, roomHeight, tableZ, tableWidth);
+
             // Crear elementos decorativos ejecutivos
             CreateDecorativeElements(roomWidth, roomLength, roomHeight);
 
@@ -337,7 +350,113 @@ namespace VRTemplate.SceneGeneration.Editor
             obj.name = name;
             obj.transform.position = position;
             obj.transform.localScale = scale;
-            obj.GetComponent<Renderer>().sharedMaterial.color = color;
+
+            // Configurar material usando VRTemplateAssets
+            Renderer renderer = obj.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                // Intentar cargar materiales de VRTemplateAssets
+                Material material = null;
+
+                // Buscar material apropiado según el color
+                if (color == new Color(0.8f, 0.8f, 0.8f)) // Paredes
+                {
+                    material = AssetDatabase.LoadAssetAtPath<Material>(
+                        "Assets/VRTemplateAssets/Materials/Environment/Concrete.mat"
+                    );
+                }
+                else if (color == new Color(0.6f, 0.6f, 0.6f)) // Suelo
+                {
+                    material = AssetDatabase.LoadAssetAtPath<Material>(
+                        "Assets/VRTemplateAssets/Materials/Environment/Grey.mat"
+                    );
+                }
+                else if (color == new Color(0.9f, 0.9f, 0.9f)) // Techo
+                {
+                    material = AssetDatabase.LoadAssetAtPath<Material>(
+                        "Assets/VRTemplateAssets/Materials/Environment/Concrete.mat"
+                    );
+                }
+                else if (color == new Color(0.6f, 0.4f, 0.2f)) // Stage
+                {
+                    material = AssetDatabase.LoadAssetAtPath<Material>(
+                        "Assets/VRTemplateAssets/Materials/Environment/Concrete.mat"
+                    );
+                }
+                else if (color == new Color(0.4f, 0.3f, 0.2f)) // Mesa
+                {
+                    material = AssetDatabase.LoadAssetAtPath<Material>(
+                        "Assets/VRTemplateAssets/Materials/Primitive/Interactables.mat"
+                    );
+                }
+                else if (color == new Color(0.2f, 0.2f, 0.25f)) // Sillas
+                {
+                    material = AssetDatabase.LoadAssetAtPath<Material>(
+                        "Assets/VRTemplateAssets/Materials/Primitive/Interactables.mat"
+                    );
+                }
+                else if (color == new Color(0.2f, 0.5f, 0.2f)) // Plantas
+                {
+                    material = AssetDatabase.LoadAssetAtPath<Material>(
+                        "Assets/VRTemplateAssets/Materials/Environment/Concrete.mat"
+                    );
+                }
+
+                // Si no se encuentra el material específico, usar uno genérico
+                if (material == null)
+                {
+                    material = AssetDatabase.LoadAssetAtPath<Material>(
+                        "Assets/VRTemplateAssets/Materials/Environment/Concrete.mat"
+                    );
+                }
+
+                // Si aún no se encuentra, crear un material temporal
+                if (material == null)
+                {
+                    Debug.LogWarning(
+                        $"⚠️ No se pudo cargar material para {name}, creando material temporal"
+                    );
+                    material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                    material.color = color;
+                }
+                else
+                {
+                    // Ajustar el color del material si es necesario
+                    if (material.HasProperty("_BaseColor"))
+                    {
+                        material.SetColor("_BaseColor", color);
+                    }
+                    else if (material.HasProperty("_Color"))
+                    {
+                        material.SetColor("_Color", color);
+                    }
+                }
+
+                renderer.material = material;
+            }
+
+            // Asegurar que el collider esté configurado correctamente
+            Collider collider = obj.GetComponent<Collider>();
+            if (collider != null)
+            {
+                collider.enabled = true;
+
+                // Configurar collider específico según el tipo
+                if (name == "Stage")
+                {
+                    // Para el stage, asegurar que el collider sea sólido
+                    if (collider is BoxCollider boxCollider)
+                    {
+                        boxCollider.size = Vector3.one; // Tamaño normalizado
+                        boxCollider.center = Vector3.zero;
+                    }
+                    Debug.Log($"✅ Collider configurado para {name}");
+                }
+            }
+            else
+            {
+                Debug.LogError($"❌ No se encontró collider en {name}");
+            }
         }
 
         private static void CreateAmbientLight(string name, Vector3 position, Color color)
@@ -349,6 +468,56 @@ namespace VRTemplate.SceneGeneration.Editor
             l.color = color;
             l.range = 4f;
             lightGO.transform.position = position;
+        }
+
+        private static void CreateConferenceLighting(
+            float roomWidth,
+            float roomLength,
+            float roomHeight,
+            float tableZ,
+            float tableWidth
+        )
+        {
+            // Luz principal sobre la mesa de conferencias (2 puntos de luz)
+            for (int i = 0; i < 2; i++)
+            {
+                var tableLightGo = new GameObject($"TableLight_{i}");
+                var tableLight = tableLightGo.AddComponent<Light>();
+                tableLight.type = LightType.Point;
+                tableLight.intensity = 1.0f;
+                tableLight.range = roomWidth / 1.5f;
+                tableLight.color = new Color(0.9f, 0.95f, 1f); // Tono neutro-frío, profesional
+                tableLight.shadows = LightShadows.Soft;
+
+                float lightX = (i == 0) ? -tableWidth / 4 : tableWidth / 4;
+                tableLightGo.transform.position = new Vector3(lightX, roomHeight - 0.5f, tableZ);
+            }
+
+            // Luz suave sobre el presentador/stage
+            var stageLightGo = new GameObject("PresenterLight");
+            var stageLight = stageLightGo.AddComponent<Light>();
+            stageLight.type = LightType.Spot;
+            stageLight.intensity = 1.5f;
+            stageLight.range = 10f;
+            stageLight.spotAngle = 60f;
+            stageLight.color = new Color(1f, 0.95f, 0.9f); // Tono ligeramente cálido para el presentador
+            stageLight.shadows = LightShadows.Soft;
+            stageLightGo.transform.position = new Vector3(
+                0,
+                roomHeight - 0.5f,
+                roomLength / 2 - 3f
+            );
+            stageLightGo.transform.rotation = Quaternion.Euler(45, 0, 0);
+
+            // Pequeña luz de relleno ambiental
+            var ambientFillGo = new GameObject("AmbientFillLight");
+            var ambientFill = ambientFillGo.AddComponent<Light>();
+            ambientFill.type = LightType.Point;
+            ambientFill.intensity = 0.3f;
+            ambientFill.range = roomLength;
+            ambientFill.color = new Color(0.8f, 0.85f, 0.9f); // Tono muy suave
+            ambientFill.shadows = LightShadows.None;
+            ambientFillGo.transform.position = new Vector3(0, roomHeight / 2, 0);
         }
 
         private static void CreateDecorativeElements(
@@ -422,6 +591,25 @@ namespace VRTemplate.SceneGeneration.Editor
                 new Vector3(0.1f, 1.1f, 1.6f),
                 new Color(0.4f, 0.3f, 0.2f)
             );
+        }
+
+        private static void CreateDirectionalLighting()
+        {
+            // Luz principal
+            GameObject mainLight = new GameObject("DirectionalLight_Main");
+            Light light1 = mainLight.AddComponent<Light>();
+            light1.type = LightType.Directional;
+            light1.intensity = 0.9f;
+            light1.color = new Color(1f, 0.98f, 0.95f);
+            mainLight.transform.rotation = Quaternion.Euler(55f, -10f, 0f);
+
+            // Luz de rebote lateral
+            GameObject sideLight = new GameObject("DirectionalLight_Side");
+            Light light2 = sideLight.AddComponent<Light>();
+            light2.type = LightType.Directional;
+            light2.intensity = 0.3f;
+            light2.color = new Color(0.95f, 0.95f, 1f);
+            sideLight.transform.rotation = Quaternion.Euler(0f, 80f, 0f);
         }
 
         private static void SaveScene(string scenePath)

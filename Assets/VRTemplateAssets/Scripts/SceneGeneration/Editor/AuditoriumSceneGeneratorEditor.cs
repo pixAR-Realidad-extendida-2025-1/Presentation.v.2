@@ -39,6 +39,13 @@ namespace VRTemplate.SceneGeneration.Editor
                 NewSceneMode.Single
             );
 
+            // Eliminar la luz direccional por defecto para evitar conflictos
+            var defaultLight = Object.FindObjectOfType<Light>();
+            if (defaultLight != null && defaultLight.type == LightType.Directional)
+            {
+                Object.DestroyImmediate(defaultLight.gameObject);
+            }
+
             // Parámetros del auditorio (dimensiones realistas)
             float roomWidth = 15f; // Ancho: 15 metros
             float roomLength = 20f; // Largo: 20 metros
@@ -62,6 +69,9 @@ namespace VRTemplate.SceneGeneration.Editor
 
             // Crear estructura básica del auditorio
             CreateAuditoriumStructure(roomWidth, roomLength, roomHeight, wallThickness);
+
+            // Iluminación direccional múltiple
+            CreateDirectionalLighting();
 
             // Crear stage profesional
             CreateProfessionalStage(
@@ -287,90 +297,67 @@ namespace VRTemplate.SceneGeneration.Editor
             float stageLength
         )
         {
-            // Luz principal (direccional)
-            GameObject mainLight = new GameObject("MainLight");
-            Light light = mainLight.AddComponent<Light>();
-            light.type = LightType.Directional;
-            light.intensity = 0.6f;
-            light.color = new Color(1f, 0.95f, 0.8f); // Luz cálida
-            mainLight.transform.rotation = Quaternion.Euler(45f, -30f, 0f);
+            // Luz ambiental general para todo el auditorio
+            var ambientLightGo = new GameObject("AmbientAuditoriumLight");
+            ambientLightGo.transform.position = new Vector3(0, roomHeight - 1, 0);
+            var ambientLight = ambientLightGo.AddComponent<Light>();
+            ambientLight.type = LightType.Point;
+            ambientLight.intensity = 0.8f;
+            ambientLight.range = roomWidth * 1.5f;
+            ambientLight.color = new Color(1f, 0.9f, 0.8f); // Tono cálido
+            ambientLight.shadows = LightShadows.Soft;
 
-            // Luces de escena (focos principales)
+            // Luces de escenario (Spotlights)
+            float lightHeight = roomHeight - 0.5f;
+            float lightZPos = roomLength / 2 - 6f; // Un poco más atrás del stage
+
+            // Foco central
             CreateStageLight(
-                "StageLight_Left",
-                new Vector3(-stageWidth / 2 - 1f, roomHeight - 0.5f, 0),
-                new Vector3(0, -45f, 0)
-            );
-            CreateStageLight(
-                "StageLight_Right",
-                new Vector3(stageWidth / 2 + 1f, roomHeight - 0.5f, 0),
-                new Vector3(0, 45f, 0)
-            );
-            CreateStageLight(
-                "StageLight_Center",
-                new Vector3(0, roomHeight - 0.5f, -stageLength / 2 - 1f),
-                new Vector3(45f, 0, 0)
+                "Center_Spotlight",
+                new Vector3(0, lightHeight, lightZPos),
+                new Vector3(45f, 0, 0),
+                2.5f,
+                45f
             );
 
-            // Luces de ambiente (4 filas)
-            for (int row = 0; row < 4; row++)
-            {
-                for (int col = 0; col < 3; col++)
-                {
-                    float lightX = (col - 1) * (roomWidth / 3);
-                    float lightY = roomHeight - 0.3f;
-                    float lightZ = (row - 1.5f) * (roomLength / 4);
-                    CreateAmbientLight(
-                        $"AmbientLight_R{row}_C{col}",
-                        new Vector3(lightX, lightY, lightZ)
-                    );
-                }
-            }
-
-            // Luces de emergencia
-            CreateEmergencyLight(
-                "EmergencyLight_Left",
-                new Vector3(-roomWidth / 2 + 1f, roomHeight - 0.2f, 0)
+            // Foco izquierdo
+            CreateStageLight(
+                "Left_Spotlight",
+                new Vector3(-stageWidth / 3, lightHeight, lightZPos),
+                new Vector3(45f, -20f, 0),
+                2.0f,
+                40f
             );
-            CreateEmergencyLight(
-                "EmergencyLight_Right",
-                new Vector3(roomWidth / 2 - 1f, roomHeight - 0.2f, 0)
+
+            // Foco derecho
+            CreateStageLight(
+                "Right_Spotlight",
+                new Vector3(stageWidth / 3, lightHeight, lightZPos),
+                new Vector3(45f, 20f, 0),
+                2.0f,
+                40f
             );
         }
 
-        private static void CreateStageLight(string name, Vector3 position, Vector3 rotation)
+        private static void CreateStageLight(
+            string name,
+            Vector3 position,
+            Vector3 rotation,
+            float intensity,
+            float spotAngle
+        )
         {
-            GameObject lightGO = new GameObject(name);
-            Light light = lightGO.AddComponent<Light>();
+            var lightGo = new GameObject(name);
+            lightGo.transform.position = position;
+            lightGo.transform.rotation = Quaternion.Euler(rotation);
+
+            var light = lightGo.AddComponent<Light>();
             light.type = LightType.Spot;
-            light.intensity = 2f;
-            light.color = new Color(1f, 0.95f, 0.8f);
-            light.range = 15f;
-            light.spotAngle = 30f;
-            lightGO.transform.position = position;
-            lightGO.transform.rotation = Quaternion.Euler(rotation);
-        }
-
-        private static void CreateAmbientLight(string name, Vector3 position)
-        {
-            GameObject lightGO = new GameObject(name);
-            Light light = lightGO.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.intensity = 0.8f;
-            light.color = new Color(1f, 0.95f, 0.8f);
-            light.range = 8f;
-            lightGO.transform.position = position;
-        }
-
-        private static void CreateEmergencyLight(string name, Vector3 position)
-        {
-            GameObject lightGO = new GameObject(name);
-            Light light = lightGO.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.intensity = 0.3f;
-            light.color = Color.red;
-            light.range = 5f;
-            lightGO.transform.position = position;
+            light.intensity = intensity;
+            light.range = 20f;
+            light.spotAngle = spotAngle;
+            light.color = new Color(0.9f, 0.9f, 1f); // Tono ligeramente frío para el escenario
+            light.shadows = LightShadows.Soft;
         }
 
         private static void CreateTheaterDecorations(float width, float length, float height)
@@ -484,6 +471,28 @@ namespace VRTemplate.SceneGeneration.Editor
                 Debug.LogWarning($"Material {materialName} no encontrado en {materialPath}");
                 obj.GetComponent<Renderer>().sharedMaterial.color = Color.gray;
             }
+
+            // Configurar collider correctamente
+            Collider collider = obj.GetComponent<Collider>();
+            if (collider != null)
+            {
+                collider.enabled = true;
+
+                // Configuración específica para el stage
+                if (obj.name == "Stage")
+                {
+                    if (collider is BoxCollider boxCollider)
+                    {
+                        boxCollider.size = Vector3.one; // Tamaño normalizado
+                        boxCollider.center = Vector3.zero;
+                    }
+                    Debug.Log($"✅ Collider configurado para {obj.name}");
+                }
+            }
+            else
+            {
+                Debug.LogError($"❌ No se encontró collider en {obj.name}");
+            }
         }
 
         private static void SaveScene(string scenePath)
@@ -503,6 +512,33 @@ namespace VRTemplate.SceneGeneration.Editor
                 buildScenes.Add(new EditorBuildSettingsScene(scenePath, true));
                 EditorBuildSettings.scenes = buildScenes.ToArray();
             }
+        }
+
+        private static void CreateDirectionalLighting()
+        {
+            // Luz principal (simula luz solar)
+            GameObject mainLight = new GameObject("DirectionalLight_Main");
+            Light light1 = mainLight.AddComponent<Light>();
+            light1.type = LightType.Directional;
+            light1.intensity = 1.0f;
+            light1.color = new Color(1f, 0.97f, 0.92f);
+            mainLight.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+
+            // Luz secundaria (simula rebote desde el suelo)
+            GameObject fillLight = new GameObject("DirectionalLight_Fill");
+            Light light2 = fillLight.AddComponent<Light>();
+            light2.type = LightType.Directional;
+            light2.intensity = 0.4f;
+            light2.color = new Color(0.8f, 0.9f, 1f);
+            fillLight.transform.rotation = Quaternion.Euler(340f, 30f, 0f);
+
+            // Luz ambiente lateral (simula rebote lateral)
+            GameObject sideLight = new GameObject("DirectionalLight_Side");
+            Light light3 = sideLight.AddComponent<Light>();
+            light3.type = LightType.Directional;
+            light3.intensity = 0.3f;
+            light3.color = new Color(1f, 0.95f, 0.8f);
+            sideLight.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
         }
     }
 }

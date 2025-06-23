@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -176,22 +177,228 @@ namespace VRTemplate.SceneManagement.Editor
         {
             Debug.Log($"🔧 Generando escena: {sceneType}");
 
-            // Aquí se llamarían los métodos de generación específicos
-            // Por ahora solo registramos la acción
+            // Usar reflexión para llamar a los métodos de generación específicos
             switch (sceneType)
             {
                 case "ConfigurationScene":
                     Debug.Log("📋 Generando escena de configuración...");
+                    try
+                    {
+                        var configType = System.Type.GetType(
+                            "VRTemplate.SceneGeneration.Editor.ConfigurationSceneGeneratorEditor, Assembly-CSharp-Editor"
+                        );
+                        if (configType != null)
+                        {
+                            var method = configType.GetMethod(
+                                "GenerateConfigurationScene",
+                                System.Reflection.BindingFlags.Public
+                                    | System.Reflection.BindingFlags.Static
+                            );
+                            if (method != null)
+                            {
+                                method.Invoke(null, null);
+                                Debug.Log("✅ Escena de configuración generada");
+                            }
+                            else
+                            {
+                                Debug.LogError("❌ Método GenerateConfigurationScene no encontrado");
+                            }
+                        }
+                        else
+                        {
+                            Debug.LogError(
+                                "❌ Clase ConfigurationSceneGeneratorEditor no encontrada"
+                            );
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogError($"❌ Error generando escena de configuración: {e.Message}");
+                    }
                     break;
+
                 case "ClassroomScene":
                     Debug.Log("🏫 Generando sala de clases...");
+                    try
+                    {
+                        var classroomType = System.Type.GetType(
+                            "VRTemplate.SceneGeneration.Editor.ClassroomSceneGeneratorEditor, Assembly-CSharp-Editor"
+                        );
+                        if (classroomType != null)
+                        {
+                            var method = classroomType.GetMethod(
+                                "GenerateClassroomScene",
+                                System.Reflection.BindingFlags.Public
+                                    | System.Reflection.BindingFlags.Static
+                            );
+                            if (method != null)
+                            {
+                                method.Invoke(null, null);
+                                Debug.Log("✅ Sala de clases generada");
+                            }
+                            else
+                            {
+                                Debug.LogError("❌ Método GenerateClassroomScene no encontrado");
+                            }
+                        }
+                        else
+                        {
+                            Debug.LogError("❌ Clase ClassroomSceneGeneratorEditor no encontrada");
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogError($"❌ Error generando sala de clases: {e.Message}");
+                    }
                     break;
+
                 case "AuditoriumScene":
                     Debug.Log("🎭 Generando auditorio...");
+                    try
+                    {
+                        var auditoriumType = System.Type.GetType(
+                            "VRTemplate.SceneGeneration.Editor.AuditoriumSceneGeneratorEditor, Assembly-CSharp-Editor"
+                        );
+                        if (auditoriumType != null)
+                        {
+                            var method = auditoriumType.GetMethod(
+                                "GenerateAuditoriumScene",
+                                System.Reflection.BindingFlags.Public
+                                    | System.Reflection.BindingFlags.Static
+                            );
+                            if (method != null)
+                            {
+                                method.Invoke(null, null);
+                                Debug.Log("✅ Auditorio generado");
+                            }
+                            else
+                            {
+                                Debug.LogError("❌ Método GenerateAuditoriumScene no encontrado");
+                            }
+                        }
+                        else
+                        {
+                            Debug.LogError("❌ Clase AuditoriumSceneGeneratorEditor no encontrada");
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogError($"❌ Error generando auditorio: {e.Message}");
+                    }
                     break;
+
                 case "ConferenceScene":
                     Debug.Log("💼 Generando sala de conferencias...");
+                    try
+                    {
+                        var conferenceType = System.Type.GetType(
+                            "VRTemplate.SceneGeneration.Editor.ConferenceSceneGeneratorEditor, Assembly-CSharp-Editor"
+                        );
+                        if (conferenceType != null)
+                        {
+                            var method = conferenceType.GetMethod(
+                                "GenerateConferenceScene",
+                                System.Reflection.BindingFlags.Public
+                                    | System.Reflection.BindingFlags.Static
+                            );
+                            if (method != null)
+                            {
+                                method.Invoke(null, null);
+                                Debug.Log("✅ Sala de conferencias generada");
+                            }
+                            else
+                            {
+                                Debug.LogError("❌ Método GenerateConferenceScene no encontrado");
+                            }
+                        }
+                        else
+                        {
+                            Debug.LogError("❌ Clase ConferenceSceneGeneratorEditor no encontrada");
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogError($"❌ Error generando sala de conferencias: {e.Message}");
+                    }
                     break;
+            }
+        }
+
+        [MenuItem("VR Simulador/Generar y Configurar Todo", priority = 4)]
+        public static void ConfigureEverything()
+        {
+            Debug.Log("🚀 Configurando todo el sistema VR...");
+
+            // 1. Generar todas las escenas
+            GenerateAllScenes();
+
+            // 2. Verificar Build Settings
+            VerifyAndAddScenesToBuildSettings();
+
+            // 3. Verificar configuración final
+            VerifySceneConfiguration();
+
+            Debug.Log("✅ Configuración completa finalizada");
+            EditorUtility.DisplayDialog(
+                "Configuración Completada",
+                "Todo el sistema VR ha sido configurado correctamente:\n\n"
+                    + "✅ Todas las escenas generadas\n"
+                    + "✅ SceneManager configurado\n"
+                    + "✅ Build Settings actualizados\n"
+                    + "✅ Input System configurado\n\n"
+                    + "¡Ya puedes probar el simulador!",
+                "OK"
+            );
+        }
+
+        private static void VerifyAndAddScenesToBuildSettings()
+        {
+            Debug.Log("🔧 Verificando Build Settings...");
+
+            string[] sceneNames =
+            {
+                "ConfigurationScene",
+                "ClassroomScene",
+                "AuditoriumScene",
+                "ConferenceScene",
+            };
+
+            var buildScenes = EditorBuildSettings.scenes.ToList();
+            bool buildSettingsChanged = false;
+
+            foreach (string sceneName in sceneNames)
+            {
+                string scenePath = $"Assets/Scenes/{sceneName}.unity";
+
+                // Verificar si la escena existe
+                if (!System.IO.File.Exists(scenePath))
+                {
+                    Debug.LogWarning($"⚠️ Escena {sceneName} no encontrada en {scenePath}");
+                    continue;
+                }
+
+                // Verificar si ya está en Build Settings
+                bool sceneExists = buildScenes.Any(scene => scene.path == scenePath);
+                if (!sceneExists)
+                {
+                    buildScenes.Add(new EditorBuildSettingsScene(scenePath, true));
+                    buildSettingsChanged = true;
+                    Debug.Log($"✅ Escena {sceneName} agregada al Build Settings");
+                }
+                else
+                {
+                    Debug.Log($"ℹ️ Escena {sceneName} ya está en Build Settings");
+                }
+            }
+
+            if (buildSettingsChanged)
+            {
+                EditorBuildSettings.scenes = buildScenes.ToArray();
+                Debug.Log("✅ Build Settings actualizados");
+            }
+            else
+            {
+                Debug.Log("ℹ️ Build Settings ya están actualizados");
             }
         }
     }
