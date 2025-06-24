@@ -228,7 +228,6 @@ public class SlideLoader : MonoBehaviour
                 || f.ToLower().EndsWith(".png")
                 || f.ToLower().EndsWith(".jpeg")
             )
-            .OrderBy(f => f)
             .ToArray();
 
         if (imageFiles.Length == 0)
@@ -237,7 +236,21 @@ public class SlideLoader : MonoBehaviour
             yield break;
         }
 
-        foreach (var file in imageFiles)
+        // Ordenar archivos numéricamente por el número en el nombre
+        var sortedFiles = imageFiles
+            .Select(file => new
+            {
+                FilePath = file,
+                FileName = Path.GetFileName(file),
+                Number = ExtractNumberFromFileName(Path.GetFileName(file)),
+            })
+            .OrderBy(x => x.Number)
+            .Select(x => x.FilePath)
+            .ToArray();
+
+        UnityEngine.Debug.Log($"📄 Cargando {sortedFiles.Length} diapositivas en orden...");
+
+        foreach (var file in sortedFiles)
         {
             Texture2D tex = new Texture2D(2, 2);
             byte[] bytes = File.ReadAllBytes(file);
@@ -245,13 +258,41 @@ public class SlideLoader : MonoBehaviour
             if (tex.LoadImage(bytes))
             {
                 slides.Add(tex);
-                UnityEngine.Debug.Log("Cargada: " + Path.GetFileName(file));
+                UnityEngine.Debug.Log("✅ Cargada: " + Path.GetFileName(file));
             }
             yield return null;
         }
 
         if (slides.Count > 0)
+        {
             ShowSlide(0);
+            UnityEngine.Debug.Log($"�� Presentación lista: {slides.Count} diapositivas cargadas");
+        }
+    }
+
+    /// <summary>
+    /// Extrae el número del nombre del archivo para ordenamiento correcto
+    /// </summary>
+    private int ExtractNumberFromFileName(string fileName)
+    {
+        try
+        {
+            // Buscar patrones comunes de nombres de archivo
+            // slide_1.png, slide_01.png, page_1.png, etc.
+            var match = System.Text.RegularExpressions.Regex.Match(fileName, @"(\d+)");
+            if (match.Success)
+            {
+                return int.Parse(match.Groups[1].Value);
+            }
+
+            // Si no encuentra número, usar el nombre completo para ordenamiento alfabético
+            return 0;
+        }
+        catch
+        {
+            UnityEngine.Debug.LogWarning($"No se pudo extraer número del archivo: {fileName}");
+            return 0;
+        }
     }
 
     void ShowSlide(int index)
