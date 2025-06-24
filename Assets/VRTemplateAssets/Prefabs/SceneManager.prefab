@@ -51,7 +51,6 @@ MonoBehaviour:
   transitionDuration: 1
   useLoadingScreen: 1
   loadingScreenPrefab: {fileID: 0}
-  persistPDFPath: 1
   persistScenarioSelection: 1
   loadingCanvas: {fileID: 0}
   progressBar: {fileID: 0}

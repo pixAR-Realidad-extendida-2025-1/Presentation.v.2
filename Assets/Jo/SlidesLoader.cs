@@ -1,13 +1,11 @@
-using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using SimpleFileBrowser;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Diagnostics;
+using SimpleFileBrowser;
+using UnityEngine;
 using UnityEngine.InputSystem;
-
-
 
 public class SlideLoader : MonoBehaviour
 {
@@ -16,6 +14,10 @@ public class SlideLoader : MonoBehaviour
     [Header("Configuración Visual")]
     public Renderer pantalla; // Arrastra tu Quad aquí
     public float transitionSpeed = 1f;
+
+    [Header("Estado")]
+    private bool isFileBrowserOpen = false;
+    private bool wasPaused = false;
 
     [Header("Controles")]
     public KeyCode nextKey = KeyCode.RightArrow;
@@ -26,11 +28,16 @@ public class SlideLoader : MonoBehaviour
     private int currentIndex = 0;
     private bool isTransitioning = false;
 
-
+    [Header("Configuración de MuPDF")]
+    [SerializeField]
+    private string customMutoolPath = ""; // Deja vacío para búsqueda automática
 
     void Start()
     {
         UnityEngine.Debug.Log("=== PRUEBA DE CONFIGURACIÓN ===");
+
+        // Configurar el mouse según la escena actual
+        ConfigureMouseForScene();
 
         if (pantalla == null) // Cambié "Pantalla" a "targetScreen" para coincidir con tu script
         {
@@ -48,15 +55,48 @@ public class SlideLoader : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Configura el mouse según la escena actual
+    /// </summary>
+    private void ConfigureMouseForScene()
+    {
+        string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+
+        if (currentSceneName == "ConfigurationScene")
+        {
+            // En la escena de configuración, mostrar el mouse
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            UnityEngine.Debug.Log("🖱️ Mouse visible en escena de configuración");
+        }
+        else
+        {
+            // En escenas de presentación, ocultar el mouse
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+            UnityEngine.Debug.Log("🖱️ Mouse oculto en escena de presentación");
+        }
+    }
+
     void Update()
     {
-        if (Input.GetKeyDown(openKey)) OpenFileBrowser();
+        if (Input.GetKeyDown(openKey))
+        {
+            OpenFileBrowser();
+            return; // Salir del Update para evitar otros inputs
+        }
+
+        // Si el explorador está abierto, no procesar otros inputs
+        if (isFileBrowserOpen)
+            return;
 
         if (!isTransitioning)
         {
             // Teclado
-            if (Input.GetKeyDown(nextKey)) NextSlide();
-            if (Input.GetKeyDown(prevKey)) PreviousSlide();
+            if (Input.GetKeyDown(nextKey))
+                NextSlide();
+            if (Input.GetKeyDown(prevKey))
+                PreviousSlide();
 
             // Controles de Quest (Input System)
             if (Gamepad.current != null)
@@ -65,7 +105,7 @@ public class SlideLoader : MonoBehaviour
                     NextSlide();
                 if (Gamepad.current.buttonWest.wasPressedThisFrame) // X
                     PreviousSlide();
-                if (Gamepad.current.buttonEast.wasPressedThisFrame)  // B
+                if (Gamepad.current.buttonEast.wasPressedThisFrame) // B
                     OpenFileBrowser();
                 if (Gamepad.current.rightShoulder.wasPressedThisFrame)
                     UnityEngine.Debug.Log("Grip derecho presionado");
@@ -77,7 +117,6 @@ public class SlideLoader : MonoBehaviour
         }
     }
 
-
     void ConfigureScreen()
     {
         if (pantalla != null)
@@ -85,11 +124,15 @@ public class SlideLoader : MonoBehaviour
             // pantalla.material = new Material(Shader.Find("Unlit/Texture"));
             UnityEngine.Debug.Log("Pantalla configurada correctamente");
         }
-        else UnityEngine.Debug.LogError("Asigna el Quad en el Inspector!");
+        else
+            UnityEngine.Debug.LogError("Asigna el Quad en el Inspector!");
     }
 
     public void OpenFileBrowser()
     {
+        // Pausar la escena y liberar el mouse
+        PauseSceneForFileBrowser();
+
         FileBrowser.ShowLoadDialog(
             (paths) =>
             {
@@ -107,8 +150,16 @@ public class SlideLoader : MonoBehaviour
                 {
                     UnityEngine.Debug.LogWarning("Archivo no soportado.");
                 }
+
+                // Reanudar la escena después de seleccionar archivo
+                ResumeSceneFromFileBrowser();
             },
-            () => { UnityEngine.Debug.Log("Operación cancelada"); },
+            () =>
+            {
+                UnityEngine.Debug.Log("Operación cancelada");
+                // Reanudar la escena si se cancela
+                ResumeSceneFromFileBrowser();
+            },
             FileBrowser.PickMode.FilesAndFolders,
             false,
             null,
@@ -118,6 +169,48 @@ public class SlideLoader : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// Pausa la escena y libera el mouse para el explorador de archivos
+    /// </summary>
+    private void PauseSceneForFileBrowser()
+    {
+        isFileBrowserOpen = true;
+
+        // Guardar el estado actual de pausa
+        wasPaused = Time.timeScale == 0f;
+
+        // Pausar la escena
+        Time.timeScale = 0f;
+
+        // Liberar el mouse
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        // Pausar el audio si existe
+        AudioListener.pause = true;
+
+        UnityEngine.Debug.Log("⏸️ Escena pausada para explorador de archivos");
+    }
+
+    /// <summary>
+    /// Reanuda la escena después del explorador de archivos
+    /// </summary>
+    private void ResumeSceneFromFileBrowser()
+    {
+        isFileBrowserOpen = false;
+
+        // Reanudar la escena solo si no estaba pausada antes
+        if (!wasPaused)
+        {
+            Time.timeScale = 1f;
+            AudioListener.pause = false;
+        }
+
+        // Restaurar el estado del mouse según la escena actual
+        ConfigureMouseForScene();
+
+        UnityEngine.Debug.Log("▶️ Escena reanudada después del explorador de archivos");
+    }
 
     void LoadFolder(string folderPath)
     {
@@ -128,10 +221,13 @@ public class SlideLoader : MonoBehaviour
     {
         slides.Clear();
 
-        var imageFiles = Directory.GetFiles(folderPath)
-            .Where(f => f.ToLower().EndsWith(".jpg") ||
-                       f.ToLower().EndsWith(".png") ||
-                       f.ToLower().EndsWith(".jpeg"))
+        var imageFiles = Directory
+            .GetFiles(folderPath)
+            .Where(f =>
+                f.ToLower().EndsWith(".jpg")
+                || f.ToLower().EndsWith(".png")
+                || f.ToLower().EndsWith(".jpeg")
+            )
             .OrderBy(f => f)
             .ToArray();
 
@@ -154,7 +250,8 @@ public class SlideLoader : MonoBehaviour
             yield return null;
         }
 
-        if (slides.Count > 0) ShowSlide(0);
+        if (slides.Count > 0)
+            ShowSlide(0);
     }
 
     void ShowSlide(int index)
@@ -167,16 +264,17 @@ public class SlideLoader : MonoBehaviour
         UnityEngine.Debug.Log($"Slide {currentIndex + 1}/{slides.Count}");
     }
 
-
     public void NextSlide()
     {
-        if (slides.Count == 0) return;
+        if (slides.Count == 0)
+            return;
         StartCoroutine(TransitionSlide(1));
     }
 
     public void PreviousSlide()
     {
-        if (slides.Count == 0) return;
+        if (slides.Count == 0)
+            return;
         StartCoroutine(TransitionSlide(-1));
     }
 
@@ -189,7 +287,11 @@ public class SlideLoader : MonoBehaviour
 
         while (elapsed < fadeTime)
         {
-            pantalla.material.color = Color.Lerp(Color.white, new Color(0.5f, 0.5f, 0.5f), elapsed / fadeTime);
+            pantalla.material.color = Color.Lerp(
+                Color.white,
+                new Color(0.5f, 0.5f, 0.5f),
+                elapsed / fadeTime
+            );
             elapsed += Time.deltaTime;
             yield return null;
         }
@@ -199,7 +301,11 @@ public class SlideLoader : MonoBehaviour
         elapsed = 0f;
         while (elapsed < fadeTime)
         {
-            pantalla.material.color = Color.Lerp(new Color(0.5f, 0.5f, 0.5f), Color.white, elapsed / fadeTime);
+            pantalla.material.color = Color.Lerp(
+                new Color(0.5f, 0.5f, 0.5f),
+                Color.white,
+                elapsed / fadeTime
+            );
             elapsed += Time.deltaTime;
             yield return null;
         }
@@ -236,7 +342,7 @@ public class SlideLoader : MonoBehaviour
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
-            CreateNoWindow = true
+            CreateNoWindow = true,
         };
 
         Process proc = new Process();
@@ -272,37 +378,62 @@ public class SlideLoader : MonoBehaviour
         {
             string mutoolPath = null;
 
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
-        var psi = new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = "where",
-            Arguments = "mutool.exe",
-            RedirectStandardOutput = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        var process = System.Diagnostics.Process.Start(psi);
-        mutoolPath = process.StandardOutput.ReadToEnd().Trim().Split('\n').FirstOrDefault();
-        process.WaitForExit();
-
-        // Fallback manual (por si no está en el PATH)
-        string[] fallbackPaths = {
-            @"C:\Program Files\MuPDF\mutool.exe",
-            @"C:\MuPDF\mutool.exe"
-        };
-
-        if (string.IsNullOrWhiteSpace(mutoolPath))
-        {
-            foreach (var path in fallbackPaths)
+            // 1. Primero verificar si hay una ruta personalizada configurada en el inspector
+            if (!string.IsNullOrEmpty(customMutoolPath) && System.IO.File.Exists(customMutoolPath))
             {
-                if (System.IO.File.Exists(path))
+                UnityEngine.Debug.Log(
+                    "mutool encontrado en ruta personalizada: " + customMutoolPath
+                );
+                return customMutoolPath;
+            }
+
+            // 2. Buscar en el proyecto (Assets/Others/mupdf-1.26.2-windows/mutool.exe)
+            string projectMutoolPath = Path.Combine(
+                Application.dataPath,
+                "Others",
+                "mupdf-1.26.2-windows",
+                "mutool.exe"
+            );
+            if (System.IO.File.Exists(projectMutoolPath))
+            {
+                UnityEngine.Debug.Log("mutool encontrado en el proyecto: " + projectMutoolPath);
+                return projectMutoolPath;
+            }
+
+            // 3. Buscar en el PATH del sistema
+#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "where",
+                Arguments = "mutool.exe",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+
+            var process = System.Diagnostics.Process.Start(psi);
+            mutoolPath = process.StandardOutput.ReadToEnd().Trim().Split('\n').FirstOrDefault();
+            process.WaitForExit();
+
+            // 4. Fallback manual (por si no está en el PATH)
+            string[] fallbackPaths =
+            {
+                @"C:\Program Files\MuPDF\mutool.exe",
+                @"C:\MuPDF\mutool.exe",
+                @"C:\Program Files (x86)\MuPDF\mutool.exe",
+            };
+
+            if (string.IsNullOrWhiteSpace(mutoolPath))
+            {
+                foreach (var path in fallbackPaths)
                 {
-                    mutoolPath = path;
-                    break;
+                    if (System.IO.File.Exists(path))
+                    {
+                        mutoolPath = path;
+                        break;
+                    }
                 }
             }
-        }
 
 #else // macOS / Linux
             var psi = new System.Diagnostics.ProcessStartInfo
@@ -311,7 +442,7 @@ public class SlideLoader : MonoBehaviour
                 Arguments = "-c \"which mutool\"",
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
             };
 
             var process = System.Diagnostics.Process.Start(psi);
@@ -320,11 +451,12 @@ public class SlideLoader : MonoBehaviour
 
             if (string.IsNullOrWhiteSpace(mutoolPath))
             {
-                string[] fallbackPaths = {
-                "/opt/homebrew/bin/mutool",
-                "/usr/local/bin/mutool",
-                "/usr/bin/mutool"
-            };
+                string[] fallbackPaths =
+                {
+                    "/opt/homebrew/bin/mutool",
+                    "/usr/local/bin/mutool",
+                    "/usr/bin/mutool",
+                };
 
                 foreach (var path in fallbackPaths)
                 {
@@ -339,11 +471,19 @@ public class SlideLoader : MonoBehaviour
 
             if (!string.IsNullOrWhiteSpace(mutoolPath) && System.IO.File.Exists(mutoolPath))
             {
-                UnityEngine.Debug.Log("mutool encontrado en: " + mutoolPath);
+                UnityEngine.Debug.Log("mutool encontrado en el sistema: " + mutoolPath);
                 return mutoolPath;
             }
 
             UnityEngine.Debug.LogError("No se encontró mutool en el sistema.");
+            UnityEngine.Debug.LogError("Opciones para solucionarlo:");
+            UnityEngine.Debug.LogError(
+                "1. Configura la ruta en el inspector (campo 'Custom Mutool Path')"
+            );
+            UnityEngine.Debug.LogError(
+                "2. Coloca mutool.exe en Assets/Others/mupdf-1.26.2-windows/"
+            );
+            UnityEngine.Debug.LogError("3. Instala MuPDF y agrégalo al PATH del sistema");
             return null;
         }
         catch (System.Exception ex)
@@ -352,9 +492,4 @@ public class SlideLoader : MonoBehaviour
             return null;
         }
     }
-
-
-
-
-
 }

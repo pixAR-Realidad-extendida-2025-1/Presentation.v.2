@@ -284,7 +284,7 @@ namespace VRTemplate.SceneGeneration
             buttonRect.sizeDelta = new Vector2(250, 60);
 
             // Inicialmente deshabilitado
-            button.interactable = false;
+            button.interactable = true;
         }
 
         /// <summary>
@@ -390,15 +390,14 @@ namespace VRTemplate.SceneGeneration
         /// </summary>
         private void OnStartPresentationClicked()
         {
-            if (string.IsNullOrEmpty(selectedPDFPath))
-            {
-                Debug.LogWarning("No se ha seleccionado ningún PDF");
-                return;
-            }
-
             // Guardar configuración
             PlayerPrefs.SetInt("SelectedScenario", scenarioDropdown.value);
-            PlayerPrefs.SetString("SelectedPDFPath", selectedPDFPath);
+
+            // Solo guardar PDF si existe uno seleccionado
+            if (!string.IsNullOrEmpty(selectedPDFPath))
+            {
+                PlayerPrefs.SetString("SelectedPDFPath", selectedPDFPath);
+            }
 
             // Cargar la escena seleccionada
             string sceneName = sceneNames[scenarioDropdown.value];
@@ -439,9 +438,9 @@ namespace VRTemplate.SceneGeneration
         /// </summary>
         private void EnableStartButton()
         {
-            if (startPresentationButton != null)
+            if (startButton != null)
             {
-                startPresentationButton.interactable = !string.IsNullOrEmpty(selectedPDFPath);
+                startButton.interactable = true;
             }
         }
 

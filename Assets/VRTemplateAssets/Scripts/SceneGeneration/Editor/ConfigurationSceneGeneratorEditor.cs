@@ -454,22 +454,25 @@ namespace VRTemplate.SceneGeneration.Editor
 
         private void OnStartClicked()
         {
-            if (string.IsNullOrEmpty(selectedPDFPath))
-            {
-                Debug.LogWarning("⚠️ No se ha seleccionado ningún PDF");
-                return;
-            }
-
             // Guardar configuración
             PlayerPrefs.SetInt("SelectedScenario", scenarioDropdown.value);
-            PlayerPrefs.SetString("SelectedPDFPath", selectedPDFPath);
+
+            // Solo guardar PDF si existe uno seleccionado
+            if (!string.IsNullOrEmpty(selectedPDFPath))
+            {
+                PlayerPrefs.SetString("SelectedPDFPath", selectedPDFPath);
+                Debug.Log($"📄 PDF: {System.IO.Path.GetFileName(selectedPDFPath)}");
+            }
+            else
+            {
+                Debug.Log("🚀 Iniciando presentación sin PDF");
+            }
 
             // Definir nombres de escenas
             string[] sceneNames = { "ClassroomScene", "AuditoriumScene", "ConferenceScene" };
             string sceneName = sceneNames[scenarioDropdown.value];
 
             Debug.Log($"🚀 Iniciando presentación en: {sceneName}");
-            Debug.Log($"📄 PDF: {System.IO.Path.GetFileName(selectedPDFPath)}");
 
             // Intentar cargar la escena usando SceneManager
             try
