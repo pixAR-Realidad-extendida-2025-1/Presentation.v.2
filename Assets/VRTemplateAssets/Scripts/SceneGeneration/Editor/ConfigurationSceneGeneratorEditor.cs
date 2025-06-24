@@ -403,7 +403,8 @@ namespace VRTemplate.SceneGeneration.Editor
 
         private void FindUIElements()
         {
-            scenarioDropdown = FindObjectOfType<TMP_Dropdown>();
+            GameObject dropdownGO = GameObject.Find("ScenarioDropdown");
+            scenarioDropdown = dropdownGO != null ? dropdownGO.GetComponent<TMP_Dropdown>() : null;
             loadPDFButton = GameObject.Find("LoadPDFButton")?.GetComponent<Button>();
             startButton = GameObject.Find("StartButton")?.GetComponent<Button>();
             pdfInfoText = GameObject.Find("PDFInfo")?.GetComponent<TextMeshProUGUI>();
