@@ -1,136 +1,87 @@
 # Simulador VR de Presentaciones Orales
 
-## Descripción del Proyecto
+## Descripción
 
-Este proyecto es un simulador de realidad virtual (VR) diseñado para ayudar a los usuarios a practicar presentaciones orales en diferentes entornos. El simulador ofrece tres escenarios principales: sala de clases, auditorio y sala de conferencias, cada uno con sus propias características y configuraciones específicas.
+Simulador de realidad virtual para practicar presentaciones orales en diferentes entornos. Permite cargar presentaciones PDF y presentarlas en tres escenarios: sala de clases, auditorio y sala de conferencias.
 
-## Características Principales
+## Características
 
-### Escenarios Disponibles
+- **3 Escenarios**: Sala de clases, auditorio y sala de conferencias
+- **Carga de PDF**: Soporte para presentaciones en formato PDF
+- **Controles VR**: Navegación con controles VR y teclado
+- **Timer**: Cronómetro para controlar tiempo de presentación
+- **Interfaz intuitiva**: Menú de configuración simple
 
-- **Sala de Clases**: Ambiente educativo con capacidad reducida
-- **Auditorio**: Espacio amplio para presentaciones a grandes audiencias
-- **Sala de Conferencias**: Entorno profesional con mesa y asientos
+## Requisitos
 
-### Funcionalidades Core
-
-- **Selección de Escenario**: Interfaz de inicio para elegir el entorno deseado
-- **Carga de Presentaciones**: Soporte para archivos PDF
-- **Controles de Presentación**: Navegación hacia adelante y atrás en las diapositivas
-- **Movimiento VR**: Teleportación y navegación natural en el espacio virtual
-- **Spawn Point**: Punto de aparición configurado en cada escenario
-
-## Arquitectura del Proyecto
-
-### Estructura de Escenas
-
-Cada escenario sigue un estándar común que incluye:
-
-- 4 paredes (frente, trasera, izquierda, derecha)
-- Suelo y techo
-- Pantalla de presentación en la pared trasera
-- Stage (área de movimiento del usuario)
-- Asientos orientados hacia la pared trasera
-- Sistema de iluminación completo
-- Spawn point en el stage
-
-### Assets Disponibles
-
-- **VRTemplateAssets**: Template base con scripts, prefabs y modelos VR
-- **Gwangju 3D Asset**: Assets de teatro que pueden ser reutilizados
-- **School Assets**: Elementos educativos
-- **Primitivas**: Cubos, cilindros, esferas para construcción básica
-
-## Estrategia de Desarrollo
-
-### Enfoque Paso a Paso
-
-El desarrollo se basa en scripts de configuración automatizada:
-
-1. **Script de Iniciación**: Configuración inicial del proyecto
-2. **Script de Build Settings**: Configuración de compilación
-3. **Scripts de Generación de Escenas**: Creación automática de cada escenario
-4. **Scripts de Configuración**: Ajustes específicos por escenario
-
-### MVP (Minimum Viable Product)
-
-- Funcionalidad básica de presentación con PDF
-- Navegación entre diapositivas
-- Tres escenarios funcionales
-- Controles VR básicos
-
-## Tecnologías Utilizadas
-
-- **Unity**: Motor de desarrollo principal
-- **XR Interaction Toolkit**: Framework para interacciones VR
-- **TextMesh Pro**: Sistema de texto avanzado
-- **VR Template**: Base de desarrollo VR
-
-## Instalación y Configuración
-
-### Requisitos Previos
+### Software
 
 - Unity 2022.3 LTS o superior
-- XR Interaction Toolkit
-- Dispositivo VR compatible (Meta Quest, HTC Vive, etc.)
+- Dispositivo VR (Meta Quest, HTC Vive, etc.)
 
-### Pasos de Instalación
+### Hardware
 
-1. Clonar el repositorio
-2. Abrir el proyecto en Unity
-3. Ejecutar el script de configuración inicial
-4. Configurar las build settings para VR
-5. Generar las escenas base
+- PC compatible con VR
+- Dispositivo VR conectado
 
-## Uso del Simulador
+## Instalación
 
-1. **Inicio**: Seleccionar escenario desde la pantalla principal
-2. **Carga**: Subir archivo PDF de presentación
-3. **Configuración**: Ajustar parámetros específicos del escenario
-4. **Iniciar**: Comenzar la simulación en el spawn point
-5. **Presentación**: Usar controles VR para navegar las diapositivas
+1. **Descargar** el proyecto desde el repositorio
+2. **Abrir Unity Hub** y agregar el proyecto
+3. **Esperar** a que Unity cargue todos los assets
+4. **Ejecutar** el menú "VR Simulador" → "Generar y Configurar Todo"
 
-## Estructura de Archivos
+## Uso
+
+### Configuración Inicial
+
+1. Abrir la escena `ConfigurationScene`
+2. Seleccionar el escenario deseado
+3. Hacer clic en "Iniciar Presentación"
+
+### Controles VR
+
+- **Botón A**: Siguiente diapositiva
+- **Botón X**: Diapositiva anterior
+- **Botón B**: Abrir explorador de archivos
+- **Enter**: Abrir explorador de archivos (teclado)
+
+### Timer
+
+- **Start**: Iniciar cronómetro
+- **Pause**: Pausar cronómetro
+- **Reset**: Reiniciar cronómetro
+
+## Estructura del Proyecto
 
 ```
 Assets/
-├── VRTemplateAssets/     # Template VR base
+├── Scenes/              # Escenas del simulador
+├── VRTemplateAssets/    # Template VR base
 ├── Others/              # Assets adicionales
-│   ├── Gwangju_3D asset/ # Assets de teatro
-│   └── school/          # Assets educativos
-├── Scenes/              # Escenas del proyecto
-└── Scripts/             # Scripts de configuración
+│   └── mupdf-1.26.2-windows/ # Conversor PDF
+└── Jo/                  # Scripts de presentación
 ```
 
-## Documentación Adicional
+## Solución de Problemas
 
-- [Análisis de Escenas](Docs/ANALISIS_ESCENAS.md): Especificaciones detalladas de cada escenario
-- [Guía de Configuración](Docs/CONFIGURACION.md): Pasos para configurar el proyecto
-- [Manual de Uso](Docs/MANUAL_USUARIO.md): Guía completa para usuarios
+### "No se encontró mutool"
 
-## Estado del Proyecto
+- El proyecto incluye MuPDF en `Assets/Others/mupdf-1.26.2-windows/`
+- Si persiste, descargar MuPDF desde https://mupdf.com/downloads/
 
-- [x] Estructura base del proyecto
-- [x] Assets y recursos identificados
-- [ ] Scripts de configuración automática
-- [ ] Generación de escenas base
-- [ ] Sistema de carga de PDF
-- [ ] Controles de presentación
-- [ ] Testing y optimización
+### "No se detectó dispositivo VR"
 
-## Contribución
+- Verificar conexión del dispositivo VR
+- En modo editor funciona con teclado y mouse
 
-Este proyecto está en desarrollo activo. Para contribuir:
+### Mouse visible en VR
 
-1. Revisar la documentación de análisis
-2. Seguir los estándares de Unity y VR
-3. Probar en dispositivos VR reales
-4. Documentar cambios y mejoras
+- El mouse se oculta automáticamente en presentaciones
+- Solo visible en menú de configuración
 
-## Licencia
+## Tecnologías
 
-[Especificar licencia del proyecto]
-
-## Contacto
-
-[Información de contacto del equipo de desarrollo]
+- Unity 2022.3 LTS
+- XR Interaction Toolkit
+- MuPDF (conversión PDF)
