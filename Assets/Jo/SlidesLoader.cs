@@ -32,6 +32,11 @@ public class SlideLoader : MonoBehaviour
     [SerializeField]
     private string customMutoolPath = ""; // Deja vacío para búsqueda automática
 
+    [Header("Input Actions (XR)")]
+    public InputActionReference nextSlideAction;
+    public InputActionReference previousSlideAction;
+    public InputActionReference openPDFAction;
+
     void Start()
     {
         UnityEngine.Debug.Log("=== PRUEBA DE CONFIGURACIÓN ===");
@@ -532,5 +537,40 @@ public class SlideLoader : MonoBehaviour
             UnityEngine.Debug.LogError("Error buscando mutool: " + ex.Message);
             return null;
         }
+    }
+
+    void OnEnable()
+    {
+        if (nextSlideAction != null)
+            nextSlideAction.action.performed += OnNextSlideAction;
+        if (previousSlideAction != null)
+            previousSlideAction.action.performed += OnPreviousSlideAction;
+        if (openPDFAction != null)
+            openPDFAction.action.performed += OnOpenPDFAction;
+    }
+
+    void OnDisable()
+    {
+        if (nextSlideAction != null)
+            nextSlideAction.action.performed -= OnNextSlideAction;
+        if (previousSlideAction != null)
+            previousSlideAction.action.performed -= OnPreviousSlideAction;
+        if (openPDFAction != null)
+            openPDFAction.action.performed -= OnOpenPDFAction;
+    }
+
+    private void OnNextSlideAction(InputAction.CallbackContext ctx)
+    {
+        NextSlide();
+    }
+
+    private void OnPreviousSlideAction(InputAction.CallbackContext ctx)
+    {
+        PreviousSlide();
+    }
+
+    private void OnOpenPDFAction(InputAction.CallbackContext ctx)
+    {
+        OpenFileBrowser();
     }
 }

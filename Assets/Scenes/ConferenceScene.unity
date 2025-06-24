@@ -2498,6 +2498,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   timerText: {fileID: 966660503}
+  startTimerAction: {fileID: -5044228985164638497, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  pauseTimerAction: {fileID: -6812595421723332336, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  resetTimerAction: {fileID: -599526320741517785, guid: c348712bda248c246b8c49b3db54643f, type: 3}
 --- !u!222 &590957880
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3691,6 +3694,9 @@ MonoBehaviour:
   prevKey: 276
   openKey: 13
   customMutoolPath: 
+  nextSlideAction: {fileID: 6093586482886212415, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  previousSlideAction: {fileID: -3367815203846491975, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  openPDFAction: {fileID: 6797611442093378390, guid: c348712bda248c246b8c49b3db54643f, type: 3}
 --- !u!4 &1048692076
 Transform:
   m_ObjectHideFlags: 0
